@@ -248,6 +248,8 @@ fn mount(mountpoint: &Path, mountopts: &MountOptions) -> io::Result<(RawFd, Opti
         output.as_raw_fd().to_string(),
     );
 
+    tracing::debug!("spawn {:?}", fusermount);
+
     match unsafe { fork()? } {
         ForkResult::Child => {
             // Only async-signal-safe functions are allowed to call here.
