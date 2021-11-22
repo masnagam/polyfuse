@@ -4,3 +4,6 @@ members = [
   "examples/*",
   "xtask",
 ]
+
+[profile.release]
+debug = true
