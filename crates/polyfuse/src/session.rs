@@ -370,7 +370,9 @@ impl Session {
 
         // FIXME: Align the allocated region in `arg` with the FUSE argument types.
         let mut header = fuse_in_header::default();
-        let mut arg = vec![0u8; self.inner.bufsize - mem::size_of::<fuse_in_header>()];
+        let cap = self.inner.bufsize - mem::size_of::<fuse_in_header>();
+        let mut arg = Vec::with_capacity(cap);
+        unsafe { arg.set_len(cap); }
 
         loop {
             match conn.read_vectored(&mut [
@@ -427,7 +429,9 @@ where
 {
     // FIXME: align the allocated buffer in `buf` with FUSE argument types.
     let mut header = fuse_in_header::default();
-    let mut arg = vec![0u8; pagesize() * MAX_MAX_PAGES];
+    let cap = pagesize() * MAX_MAX_PAGES;
+    let mut arg = Vec::with_capacity(cap);
+    unsafe { arg.set_len(cap); }
 
     for _ in 0..10 {
         let len = reader.read_vectored(&mut [
