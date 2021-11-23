@@ -35,7 +35,7 @@ pub fn do_coverage(env: &Env) -> Result<()> {
     let tests = build_instrumented_tests(env)?;
 
     for test in &tests {
-        let test_name = extract_test_name(&test).context("failed to extract test name")?;
+        let test_name = extract_test_name(test).context("failed to extract test name")?;
 
         let profraw_path = cov_dir.join(format!("{}.profraw", test_name));
         let profdata_path = cov_dir.join(format!("{}.profdata", test_name));

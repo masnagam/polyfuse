@@ -302,7 +302,7 @@ impl PathThrough {
             dir.offset += 1;
         }
 
-        while let Some(entry) = dir.read_dir.next() {
+        for entry in &mut dir.read_dir {
             let entry = entry?;
             match entry.file_name() {
                 name if name.as_bytes() == b"." || name.as_bytes() == b".." => continue,

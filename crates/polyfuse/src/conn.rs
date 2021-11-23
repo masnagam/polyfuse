@@ -231,7 +231,7 @@ fn mount(mountpoint: &Path, mountopts: &MountOptions) -> io::Result<(RawFd, Opti
             if !opts.is_empty() {
                 opts.push(',');
             }
-            opts.push_str(&opt);
+            opts.push_str(opt);
             opts
         });
     if !opts.is_empty() {

@@ -372,7 +372,9 @@ impl Session {
         let mut header = fuse_in_header::default();
         let cap = self.inner.bufsize - mem::size_of::<fuse_in_header>();
         let mut arg = Vec::with_capacity(cap);
-        unsafe { arg.set_len(cap); }
+        unsafe {
+            arg.set_len(cap);
+        }
 
         loop {
             match conn.read_vectored(&mut [
@@ -431,7 +433,9 @@ where
     let mut header = fuse_in_header::default();
     let cap = pagesize() * MAX_MAX_PAGES;
     let mut arg = Vec::with_capacity(cap);
-    unsafe { arg.set_len(cap); }
+    unsafe {
+        arg.set_len(cap);
+    }
 
     for _ in 0..10 {
         let len = reader.read_vectored(&mut [
@@ -591,9 +595,7 @@ impl Request {
         }
 
         let (arg, data) = match self.header.opcode {
-            FUSE_WRITE | FUSE_NOTIFY_REPLY => {
-                self.arg.split_at(mem::size_of::<fuse_write_in>())
-            }
+            FUSE_WRITE | FUSE_NOTIFY_REPLY => self.arg.split_at(mem::size_of::<fuse_write_in>()),
             _ => (&self.arg[..], &[] as &[_]),
         };
 
