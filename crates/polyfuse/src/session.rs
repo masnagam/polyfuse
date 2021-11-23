@@ -447,8 +447,8 @@ where
 
         let mut decoder = Decoder::new(&arg[..]);
 
-        match fuse_opcode::try_from(header.opcode) {
-            Ok(fuse_opcode::FUSE_INIT) => {
+        match header.opcode {
+            FUSE_INIT => {
                 let init_in = decoder
                     .fetch::<fuse_init_in>() //
                     .map_err(|_| {
@@ -590,8 +590,8 @@ impl Request {
             return Ok(Operation::unknown());
         }
 
-        let (arg, data) = match fuse_opcode::try_from(self.header.opcode).ok() {
-            Some(fuse_opcode::FUSE_WRITE) | Some(fuse_opcode::FUSE_NOTIFY_REPLY) => {
+        let (arg, data) = match self.header.opcode {
+            FUSE_WRITE | FUSE_NOTIFY_REPLY => {
                 self.arg.split_at(mem::size_of::<fuse_write_in>())
             }
             _ => (&self.arg[..], &[] as &[_]),
@@ -1133,7 +1133,7 @@ mod tests {
         let input_len = mem::size_of::<fuse_in_header>() + mem::size_of::<fuse_init_in>();
         let in_header = fuse_in_header {
             len: input_len as u32,
-            opcode: fuse_opcode::FUSE_INIT as u32,
+            opcode: FUSE_INIT,
             unique: 2,
             nodeid: 0,
             uid: 100,

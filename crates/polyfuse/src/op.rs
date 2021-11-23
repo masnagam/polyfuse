@@ -1,6 +1,6 @@
 use crate::decoder::Decoder;
 use polyfuse_kernel::*;
-use std::{convert::TryFrom, ffi::OsStr, fmt, time::Duration, u32, u64};
+use std::{ffi::OsStr, fmt, time::Duration, u32, u64};
 
 #[derive(Debug)]
 pub struct DecodeError {
@@ -141,8 +141,8 @@ impl<'op, T> Operation<'op, T> {
     ) -> Result<Self, DecodeError> {
         let mut decoder = Decoder::new(arg);
 
-        match fuse_opcode::try_from(header.opcode).ok() {
-            Some(fuse_opcode::FUSE_FORGET) => {
+        match header.opcode {
+            FUSE_FORGET => {
                 let arg: &fuse_forget_in = decoder.fetch().map_err(DecodeError::new)?;
                 let forget = fuse_forget_one {
                     nodeid: header.nodeid,
@@ -152,7 +152,7 @@ impl<'op, T> Operation<'op, T> {
                     inner: ForgetsInner::Single(forget),
                 }))
             }
-            Some(fuse_opcode::FUSE_BATCH_FORGET) => {
+            FUSE_BATCH_FORGET => {
                 let arg: &fuse_batch_forget_in = decoder.fetch().map_err(DecodeError::new)?;
                 let forgets = decoder
                     .fetch_array::<fuse_forget_one>(arg.count as usize)
@@ -162,62 +162,62 @@ impl<'op, T> Operation<'op, T> {
                 }))
             }
 
-            Some(fuse_opcode::FUSE_INTERRUPT) => {
+            FUSE_INTERRUPT => {
                 let arg = decoder.fetch().map_err(DecodeError::new)?;
                 Ok(Operation::Interrupt(Interrupt { header, arg }))
             }
 
-            Some(fuse_opcode::FUSE_NOTIFY_REPLY) => {
+            FUSE_NOTIFY_REPLY => {
                 let arg = decoder.fetch().map_err(DecodeError::new)?;
                 Ok(Operation::NotifyReply(NotifyReply { header, arg }, data))
             }
 
-            Some(fuse_opcode::FUSE_LOOKUP) => {
+            FUSE_LOOKUP => {
                 let name = decoder.fetch_str().map_err(DecodeError::new)?;
                 Ok(Operation::Lookup(Lookup { header, name }))
             }
 
-            Some(fuse_opcode::FUSE_GETATTR) => {
+            FUSE_GETATTR => {
                 let arg = decoder.fetch().map_err(DecodeError::new)?;
                 Ok(Operation::Getattr(Getattr { header, arg }))
             }
 
-            Some(fuse_opcode::FUSE_SETATTR) => {
+            FUSE_SETATTR => {
                 let arg = decoder.fetch().map_err(DecodeError::new)?;
                 Ok(Operation::Setattr(Setattr { header, arg }))
             }
 
-            Some(fuse_opcode::FUSE_READLINK) => Ok(Operation::Readlink(Readlink { header })),
+            FUSE_READLINK => Ok(Operation::Readlink(Readlink { header })),
 
-            Some(fuse_opcode::FUSE_SYMLINK) => {
+            FUSE_SYMLINK => {
                 let name = decoder.fetch_str().map_err(DecodeError::new)?;
                 let link = decoder.fetch_str().map_err(DecodeError::new)?;
                 Ok(Operation::Symlink(Symlink { header, name, link }))
             }
 
-            Some(fuse_opcode::FUSE_MKNOD) => {
+            FUSE_MKNOD => {
                 let arg = decoder.fetch().map_err(DecodeError::new)?;
                 let name = decoder.fetch_str().map_err(DecodeError::new)?;
                 Ok(Operation::Mknod(Mknod { header, arg, name }))
             }
 
-            Some(fuse_opcode::FUSE_MKDIR) => {
+            FUSE_MKDIR => {
                 let arg = decoder.fetch().map_err(DecodeError::new)?;
                 let name = decoder.fetch_str().map_err(DecodeError::new)?;
                 Ok(Operation::Mkdir(Mkdir { header, arg, name }))
             }
 
-            Some(fuse_opcode::FUSE_UNLINK) => {
+            FUSE_UNLINK => {
                 let name = decoder.fetch_str().map_err(DecodeError::new)?;
                 Ok(Operation::Unlink(Unlink { header, name }))
             }
 
-            Some(fuse_opcode::FUSE_RMDIR) => {
+            FUSE_RMDIR => {
                 let name = decoder.fetch_str().map_err(DecodeError::new)?;
                 Ok(Operation::Rmdir(Rmdir { header, name }))
             }
 
-            Some(fuse_opcode::FUSE_RENAME) => {
+            FUSE_RENAME => {
                 let arg = decoder.fetch().map_err(DecodeError::new)?;
                 let name = decoder.fetch_str().map_err(DecodeError::new)?;
                 let newname = decoder.fetch_str().map_err(DecodeError::new)?;
@@ -228,7 +228,7 @@ impl<'op, T> Operation<'op, T> {
                     newname,
                 }))
             }
-            Some(fuse_opcode::FUSE_RENAME2) => {
+            FUSE_RENAME2 => {
                 let arg = decoder.fetch().map_err(DecodeError::new)?;
                 let name = decoder.fetch_str().map_err(DecodeError::new)?;
                 let newname = decoder.fetch_str().map_err(DecodeError::new)?;
@@ -240,7 +240,7 @@ impl<'op, T> Operation<'op, T> {
                 }))
             }
 
-            Some(fuse_opcode::FUSE_LINK) => {
+            FUSE_LINK => {
                 let arg = decoder.fetch().map_err(DecodeError::new)?;
                 let newname = decoder.fetch_str().map_err(DecodeError::new)?;
                 Ok(Operation::Link(Link {
@@ -250,34 +250,34 @@ impl<'op, T> Operation<'op, T> {
                 }))
             }
 
-            Some(fuse_opcode::FUSE_OPEN) => {
+            FUSE_OPEN => {
                 let arg = decoder.fetch().map_err(DecodeError::new)?;
                 Ok(Operation::Open(Open { header, arg }))
             }
 
-            Some(fuse_opcode::FUSE_READ) => {
+            FUSE_READ => {
                 let arg = decoder.fetch().map_err(DecodeError::new)?;
                 Ok(Operation::Read(Read { header, arg }))
             }
 
-            Some(fuse_opcode::FUSE_WRITE) => {
+            FUSE_WRITE => {
                 let arg: &fuse_write_in = decoder.fetch().map_err(DecodeError::new)?;
                 Ok(Operation::Write(Write { header, arg }, data))
             }
 
-            Some(fuse_opcode::FUSE_RELEASE) => {
+            FUSE_RELEASE => {
                 let arg = decoder.fetch().map_err(DecodeError::new)?;
                 Ok(Operation::Release(Release { header, arg }))
             }
 
-            Some(fuse_opcode::FUSE_STATFS) => Ok(Operation::Statfs(Statfs { header })),
+            FUSE_STATFS => Ok(Operation::Statfs(Statfs { header })),
 
-            Some(fuse_opcode::FUSE_FSYNC) => {
+            FUSE_FSYNC => {
                 let arg = decoder.fetch().map_err(DecodeError::new)?;
                 Ok(Operation::Fsync(Fsync { header, arg }))
             }
 
-            Some(fuse_opcode::FUSE_SETXATTR) => {
+            FUSE_SETXATTR => {
                 let arg = decoder
                     .fetch::<fuse_setxattr_in>()
                     .map_err(DecodeError::new)?;
@@ -293,33 +293,33 @@ impl<'op, T> Operation<'op, T> {
                 }))
             }
 
-            Some(fuse_opcode::FUSE_GETXATTR) => {
+            FUSE_GETXATTR => {
                 let arg: &fuse_getxattr_in = decoder.fetch().map_err(DecodeError::new)?;
                 let name = decoder.fetch_str().map_err(DecodeError::new)?;
                 Ok(Operation::Getxattr(Getxattr { header, arg, name }))
             }
 
-            Some(fuse_opcode::FUSE_LISTXATTR) => {
+            FUSE_LISTXATTR => {
                 let arg: &fuse_getxattr_in = decoder.fetch().map_err(DecodeError::new)?;
                 Ok(Operation::Listxattr(Listxattr { header, arg }))
             }
 
-            Some(fuse_opcode::FUSE_REMOVEXATTR) => {
+            FUSE_REMOVEXATTR => {
                 let name = decoder.fetch_str().map_err(DecodeError::new)?;
                 Ok(Operation::Removexattr(Removexattr { header, name }))
             }
 
-            Some(fuse_opcode::FUSE_FLUSH) => {
+            FUSE_FLUSH => {
                 let arg = decoder.fetch().map_err(DecodeError::new)?;
                 Ok(Operation::Flush(Flush { header, arg }))
             }
 
-            Some(fuse_opcode::FUSE_OPENDIR) => {
+            FUSE_OPENDIR => {
                 let arg = decoder.fetch().map_err(DecodeError::new)?;
                 Ok(Operation::Opendir(Opendir { header, arg }))
             }
 
-            Some(fuse_opcode::FUSE_READDIR) => {
+            FUSE_READDIR => {
                 let arg = decoder.fetch().map_err(DecodeError::new)?;
                 Ok(Operation::Readdir(Readdir {
                     header,
@@ -327,7 +327,7 @@ impl<'op, T> Operation<'op, T> {
                     mode: ReaddirMode::Normal,
                 }))
             }
-            Some(fuse_opcode::FUSE_READDIRPLUS) => {
+            FUSE_READDIRPLUS => {
                 let arg = decoder.fetch().map_err(DecodeError::new)?;
                 Ok(Operation::Readdir(Readdir {
                     header,
@@ -336,26 +336,26 @@ impl<'op, T> Operation<'op, T> {
                 }))
             }
 
-            Some(fuse_opcode::FUSE_RELEASEDIR) => {
+            FUSE_RELEASEDIR => {
                 let arg = decoder.fetch().map_err(DecodeError::new)?;
                 Ok(Operation::Releasedir(Releasedir { header, arg }))
             }
 
-            Some(fuse_opcode::FUSE_FSYNCDIR) => {
+            FUSE_FSYNCDIR => {
                 let arg = decoder.fetch().map_err(DecodeError::new)?;
                 Ok(Operation::Fsyncdir(Fsyncdir { header, arg }))
             }
 
-            Some(fuse_opcode::FUSE_GETLK) => {
+            FUSE_GETLK => {
                 let arg = decoder.fetch().map_err(DecodeError::new)?;
                 Ok(Operation::Getlk(Getlk { header, arg }))
             }
 
-            Some(opcode @ fuse_opcode::FUSE_SETLK) | Some(opcode @ fuse_opcode::FUSE_SETLKW) => {
+            FUSE_SETLK | FUSE_SETLKW => {
                 let arg: &fuse_lk_in = decoder.fetch().map_err(DecodeError::new)?;
-                let sleep = match opcode {
-                    fuse_opcode::FUSE_SETLK => false,
-                    fuse_opcode::FUSE_SETLKW => true,
+                let sleep = match header.opcode {
+                    FUSE_SETLK => false,
+                    FUSE_SETLKW => true,
                     _ => unreachable!(),
                 };
 
@@ -367,33 +367,33 @@ impl<'op, T> Operation<'op, T> {
                 }
             }
 
-            Some(fuse_opcode::FUSE_ACCESS) => {
+            FUSE_ACCESS => {
                 let arg = decoder.fetch().map_err(DecodeError::new)?;
                 Ok(Operation::Access(Access { header, arg }))
             }
 
-            Some(fuse_opcode::FUSE_CREATE) => {
+            FUSE_CREATE => {
                 let arg = decoder.fetch().map_err(DecodeError::new)?;
                 let name = decoder.fetch_str().map_err(DecodeError::new)?;
                 Ok(Operation::Create(Create { header, arg, name }))
             }
 
-            Some(fuse_opcode::FUSE_BMAP) => {
+            FUSE_BMAP => {
                 let arg = decoder.fetch().map_err(DecodeError::new)?;
                 Ok(Operation::Bmap(Bmap { header, arg }))
             }
 
-            Some(fuse_opcode::FUSE_FALLOCATE) => {
+            FUSE_FALLOCATE => {
                 let arg = decoder.fetch().map_err(DecodeError::new)?;
                 Ok(Operation::Fallocate(Fallocate { header, arg }))
             }
 
-            Some(fuse_opcode::FUSE_COPY_FILE_RANGE) => {
+            FUSE_COPY_FILE_RANGE => {
                 let arg = decoder.fetch().map_err(DecodeError::new)?;
                 Ok(Operation::CopyFileRange(CopyFileRange { header, arg }))
             }
 
-            Some(fuse_opcode::FUSE_POLL) => {
+            FUSE_POLL => {
                 let arg = decoder.fetch().map_err(DecodeError::new)?;
                 Ok(Operation::Poll(Poll { header, arg }))
             }
