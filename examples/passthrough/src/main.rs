@@ -667,7 +667,7 @@ impl Passthrough {
     fn do_getxattr(
         &self,
         op: &op::Getxattr<'_>,
-    ) -> io::Result<impl polyfuse::bytes::Bytes + Debug> {
+    ) -> io::Result<impl polyfuse::atomic_bytes::AtomicBytes + Debug> {
         let inodes = self.inodes.lock().unwrap();
         let inode = inodes.get(op.ino()).ok_or_else(no_entry)?;
         let inode = inode.lock().unwrap();
@@ -696,7 +696,7 @@ impl Passthrough {
     fn do_listxattr(
         &self,
         op: &op::Listxattr<'_>,
-    ) -> io::Result<impl polyfuse::bytes::Bytes + Debug> {
+    ) -> io::Result<impl polyfuse::atomic_bytes::AtomicBytes + Debug> {
         let inodes = self.inodes.lock().unwrap();
         let inode = inodes.get(op.ino()).ok_or_else(no_entry)?;
         let inode = inode.lock().unwrap();

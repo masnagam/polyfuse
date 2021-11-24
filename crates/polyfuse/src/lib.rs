@@ -7,7 +7,7 @@ mod conn;
 mod decoder;
 mod session;
 
-pub mod bytes;
+pub mod atomic_bytes;
 pub mod op;
 pub mod reply;
 

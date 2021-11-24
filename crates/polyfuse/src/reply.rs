@@ -1,4 +1,4 @@
-use crate::bytes::{Bytes, FillBytes};
+use crate::atomic_bytes::{AtomicBytes, FillBytes};
 use polyfuse_kernel::*;
 use std::{convert::TryInto as _, ffi::OsStr, fmt, mem, os::unix::prelude::*, time::Duration};
 use zerocopy::AsBytes as _;
@@ -103,7 +103,7 @@ impl fmt::Debug for EntryOut {
     }
 }
 
-impl Bytes for EntryOut {
+impl AtomicBytes for EntryOut {
     #[inline]
     fn size(&self) -> usize {
         self.out.as_bytes().len()
@@ -195,7 +195,7 @@ impl AttrOut {
     }
 }
 
-impl Bytes for AttrOut {
+impl AtomicBytes for AttrOut {
     #[inline]
     fn size(&self) -> usize {
         self.out.as_bytes().len()
@@ -224,7 +224,7 @@ impl fmt::Debug for OpenOut {
     }
 }
 
-impl Bytes for OpenOut {
+impl AtomicBytes for OpenOut {
     #[inline]
     fn size(&self) -> usize {
         self.out.as_bytes().len()
@@ -292,7 +292,7 @@ impl fmt::Debug for WriteOut {
     }
 }
 
-impl Bytes for WriteOut {
+impl AtomicBytes for WriteOut {
     #[inline]
     fn size(&self) -> usize {
         self.out.as_bytes().len()
@@ -327,7 +327,7 @@ impl fmt::Debug for StatfsOut {
     }
 }
 
-impl Bytes for StatfsOut {
+impl AtomicBytes for StatfsOut {
     #[inline]
     fn size(&self) -> usize {
         self.out.as_bytes().len()
@@ -415,7 +415,7 @@ impl fmt::Debug for XattrOut {
     }
 }
 
-impl Bytes for XattrOut {
+impl AtomicBytes for XattrOut {
     #[inline]
     fn size(&self) -> usize {
         self.out.as_bytes().len()
@@ -450,7 +450,7 @@ impl fmt::Debug for LkOut {
     }
 }
 
-impl Bytes for LkOut {
+impl AtomicBytes for LkOut {
     #[inline]
     fn size(&self) -> usize {
         self.out.as_bytes().len()
@@ -517,7 +517,7 @@ impl fmt::Debug for BmapOut {
     }
 }
 
-impl Bytes for BmapOut {
+impl AtomicBytes for BmapOut {
     #[inline]
     fn size(&self) -> usize {
         self.out.as_bytes().len()
@@ -552,7 +552,7 @@ impl fmt::Debug for PollOut {
     }
 }
 
-impl Bytes for PollOut {
+impl AtomicBytes for PollOut {
     #[inline]
     fn size(&self) -> usize {
         self.out.as_bytes().len()
@@ -586,7 +586,7 @@ impl fmt::Debug for ReaddirOut {
     }
 }
 
-impl Bytes for ReaddirOut {
+impl AtomicBytes for ReaddirOut {
     #[inline]
     fn size(&self) -> usize {
         self.buf.size()

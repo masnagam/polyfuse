@@ -11,7 +11,7 @@ use std::os::unix::prelude::*;
 ///
 /// [`bytes`]: https://docs.rs/bytes/0.6/bytes
 /// [`Buf`]: https://docs.rs/bytes/0.6/bytes/trait.Buf.html
-pub trait Bytes {
+pub trait AtomicBytes {
     /// Return the total amount of bytes contained in this data.
     fn size(&self) -> usize;
 
@@ -21,7 +21,7 @@ pub trait Bytes {
     /// Fill with potentially multiple slices in this data.
     ///
     /// This method corresonds to [`Buf::bytes_vectored`][bytes_vectored], except that
-    /// the number of byte chunks is acquired from `Bytes::count` and the implementation
+    /// the number of byte chunks is acquired from `AtomicBytes::count` and the implementation
     /// needs to add all chunks in `dst`.
     ///
     /// [bytes_vectored]: https://docs.rs/bytes/0.6/bytes/trait.Buf.html#method.bytes_vectored
@@ -36,63 +36,39 @@ pub trait FillBytes<'a> {
 
 // ==== pointer types ====
 
-macro_rules! impl_reply_body_for_pointers {
-    () => {
-        #[inline]
-        fn size(&self) -> usize {
-            (**self).size()
-        }
+macro_rules! impl_for_pointers {
+    ($T:ty) => {
+        impl<T: ?Sized> AtomicBytes for $T
+        where
+            T: AtomicBytes,
+        {
+            #[inline]
+            fn size(&self) -> usize {
+                (**self).size()
+            }
 
-        #[inline]
-        fn count(&self) -> usize {
-            (**self).count()
-        }
+            #[inline]
+            fn count(&self) -> usize {
+                (**self).count()
+            }
 
-        #[inline]
-        fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
-            (**self).fill_bytes(dst)
+            #[inline]
+            fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+                (**self).fill_bytes(dst)
+            }
         }
     };
 }
 
-impl<R: ?Sized> Bytes for &R
-where
-    R: Bytes,
-{
-    impl_reply_body_for_pointers!();
-}
-
-impl<R: ?Sized> Bytes for &mut R
-where
-    R: Bytes,
-{
-    impl_reply_body_for_pointers!();
-}
-
-impl<R: ?Sized> Bytes for Box<R>
-where
-    R: Bytes,
-{
-    impl_reply_body_for_pointers!();
-}
-
-impl<R: ?Sized> Bytes for std::rc::Rc<R>
-where
-    R: Bytes,
-{
-    impl_reply_body_for_pointers!();
-}
-
-impl<R: ?Sized> Bytes for std::sync::Arc<R>
-where
-    R: Bytes,
-{
-    impl_reply_body_for_pointers!();
-}
+impl_for_pointers!(&T);
+impl_for_pointers!(&mut T);
+impl_for_pointers!(Box<T>);
+impl_for_pointers!(std::rc::Rc<T>);
+impl_for_pointers!(std::sync::Arc<T>);
 
 // ==== empty bytes ====
 
-impl Bytes for () {
+impl AtomicBytes for () {
     #[inline]
     fn size(&self) -> usize {
         0
@@ -107,7 +83,7 @@ impl Bytes for () {
     fn fill_bytes<'a>(&'a self, _: &mut dyn FillBytes<'a>) {}
 }
 
-impl Bytes for [u8; 0] {
+impl AtomicBytes for [u8; 0] {
     #[inline]
     fn size(&self) -> usize {
         0
@@ -124,12 +100,12 @@ impl Bytes for [u8; 0] {
 
 // ==== compound types ====
 
-macro_rules! impl_reply_for_tuple {
+macro_rules! impl_for_tuple {
     ($($T:ident),+ $(,)?) => {
         #[allow(nonstandard_style)]
-        impl<$($T),+> Bytes for ($($T,)+)
+        impl<$($T),+> AtomicBytes for ($($T,)+)
         where
-            $( $T: Bytes, )+
+            $( $T: AtomicBytes, )+
         {
             #[inline]
             fn size(&self) -> usize {
@@ -155,22 +131,22 @@ macro_rules! impl_reply_for_tuple {
             fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
                 let ($($T,)+) = self;
                 $(
-                    Bytes::fill_bytes($T, dst);
+                    AtomicBytes::fill_bytes($T, dst);
                 )+
             }
         }
     }
 }
 
-impl_reply_for_tuple!(T1);
-impl_reply_for_tuple!(T1, T2);
-impl_reply_for_tuple!(T1, T2, T3);
-impl_reply_for_tuple!(T1, T2, T3, T4);
-impl_reply_for_tuple!(T1, T2, T3, T4, T5);
+impl_for_tuple!(T1);
+impl_for_tuple!(T1, T2);
+impl_for_tuple!(T1, T2, T3);
+impl_for_tuple!(T1, T2, T3, T4);
+impl_for_tuple!(T1, T2, T3, T4, T5);
 
-impl<R> Bytes for [R]
+impl<R> AtomicBytes for [R]
 where
-    R: Bytes,
+    R: AtomicBytes,
 {
     #[inline]
     fn size(&self) -> usize {
@@ -185,14 +161,14 @@ where
     #[inline]
     fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
         for t in self {
-            Bytes::fill_bytes(t, dst);
+            AtomicBytes::fill_bytes(t, dst);
         }
     }
 }
 
-impl<R> Bytes for Vec<R>
+impl<R> AtomicBytes for Vec<R>
 where
-    R: Bytes,
+    R: AtomicBytes,
 {
     #[inline]
     fn size(&self) -> usize {
@@ -207,16 +183,16 @@ where
     #[inline]
     fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
         for t in self {
-            Bytes::fill_bytes(t, dst);
+            AtomicBytes::fill_bytes(t, dst);
         }
     }
 }
 
 // ==== Option<T> ====
 
-impl<T> Bytes for Option<T>
+impl<T> AtomicBytes for Option<T>
 where
-    T: Bytes,
+    T: AtomicBytes,
 {
     #[inline]
     fn size(&self) -> usize {
@@ -231,17 +207,17 @@ where
     #[inline]
     fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
         if let Some(t) = self {
-            Bytes::fill_bytes(t, dst)
+            AtomicBytes::fill_bytes(t, dst)
         }
     }
 }
 
 // ==== Either<L, R> ====
 
-impl<L, R> Bytes for Either<L, R>
+impl<L, R> AtomicBytes for Either<L, R>
 where
-    L: Bytes,
-    R: Bytes,
+    L: AtomicBytes,
+    R: AtomicBytes,
 {
     #[inline]
     fn size(&self) -> usize {
@@ -262,8 +238,8 @@ where
     #[inline]
     fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
         match self {
-            Either::Left(l) => Bytes::fill_bytes(l, dst),
-            Either::Right(r) => Bytes::fill_bytes(r, dst),
+            Either::Left(l) => AtomicBytes::fill_bytes(l, dst),
+            Either::Right(r) => AtomicBytes::fill_bytes(r, dst),
         }
     }
 }
@@ -278,9 +254,9 @@ mod impl_scattered_bytes_for_cont {
         t.as_ref()
     }
 
-    macro_rules! impl_reply {
+    macro_rules! impl_for {
         ($($t:ty),*$(,)?) => {$(
-            impl Bytes for $t {
+            impl AtomicBytes for $t {
                 #[inline]
                 fn size(&self) -> usize {
                     as_bytes(self).len()
@@ -306,7 +282,7 @@ mod impl_scattered_bytes_for_cont {
         )*};
     }
 
-    impl_reply! {
+    impl_for! {
         [u8],
         str,
         String,
@@ -315,36 +291,36 @@ mod impl_scattered_bytes_for_cont {
     }
 }
 
-impl Bytes for std::ffi::OsStr {
+impl AtomicBytes for std::ffi::OsStr {
     #[inline]
     fn size(&self) -> usize {
-        Bytes::size(self.as_bytes())
+        AtomicBytes::size(self.as_bytes())
     }
 
     #[inline]
     fn count(&self) -> usize {
-        Bytes::count(self.as_bytes())
+        AtomicBytes::count(self.as_bytes())
     }
 
     #[inline]
     fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
-        Bytes::fill_bytes(self.as_bytes(), dst)
+        AtomicBytes::fill_bytes(self.as_bytes(), dst)
     }
 }
 
-impl Bytes for std::ffi::OsString {
+impl AtomicBytes for std::ffi::OsString {
     #[inline]
     fn size(&self) -> usize {
-        Bytes::size(self.as_bytes())
+        AtomicBytes::size(self.as_bytes())
     }
 
     #[inline]
     fn count(&self) -> usize {
-        Bytes::count(self.as_bytes())
+        AtomicBytes::count(self.as_bytes())
     }
 
     #[inline]
     fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
-        Bytes::fill_bytes(self.as_bytes(), dst)
+        AtomicBytes::fill_bytes(self.as_bytes(), dst)
     }
 }

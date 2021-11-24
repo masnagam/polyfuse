@@ -1,5 +1,5 @@
 use crate::{
-    bytes::{Bytes, FillBytes},
+    atomic_bytes::{AtomicBytes, FillBytes},
     conn::{Connection, MountOptions},
     decoder::Decoder,
     op::{DecodeError, Operation},
@@ -604,13 +604,17 @@ impl Request {
 
     pub fn reply<T>(&self, arg: T) -> io::Result<()>
     where
-        T: Bytes,
+        T: AtomicBytes,
     {
         write_bytes(&self.session.conn, Reply::new(self.unique(), 0, arg))
     }
 
     pub fn reply_error(&self, code: i32) -> io::Result<()> {
         write_bytes(&self.session.conn, Reply::new(self.unique(), code, ()))
+    }
+
+    pub fn pending_reply(&self) -> PendingReply {
+        PendingReply::new(self.session.clone(), self.unique())
     }
 }
 
@@ -649,6 +653,29 @@ impl<'op> BufRead for Data<'op> {
     }
 }
 
+pub struct PendingReply {
+    session: Arc<SessionInner>,
+    unique: u64,
+}
+
+impl PendingReply {
+    #[inline]
+    fn new(session: Arc<SessionInner>, unique: u64) -> Self {
+        Self { session, unique }
+    }
+
+    pub fn reply<T>(self, arg: T) -> io::Result<()>
+    where
+        T: AtomicBytes,
+    {
+        write_bytes(&self.session.conn, Reply::new(self.unique, 0, arg))
+    }
+
+    pub fn reply_error(&self, code: i32) -> io::Result<()> {
+        write_bytes(&self.session.conn, Reply::new(self.unique, code, ()))
+    }
+}
+
 // ==== Notifier ====
 
 #[derive(Clone)]
@@ -680,7 +707,7 @@ impl Notifier {
             header: fuse_out_header,
             arg: fuse_notify_inval_inode_out,
         }
-        impl Bytes for InvalInode {
+        impl AtomicBytes for InvalInode {
             fn size(&self) -> usize {
                 self.header.len as usize
             }
@@ -736,7 +763,7 @@ impl Notifier {
             arg: fuse_notify_inval_entry_out,
             name: T,
         }
-        impl<T> Bytes for InvalEntry<T>
+        impl<T> AtomicBytes for InvalEntry<T>
         where
             T: AsRef<OsStr>,
         {
@@ -803,7 +830,7 @@ impl Notifier {
             arg: fuse_notify_delete_out,
             name: T,
         }
-        impl<T> Bytes for Delete<T>
+        impl<T> AtomicBytes for Delete<T>
         where
             T: AsRef<OsStr>,
         {
@@ -827,7 +854,7 @@ impl Notifier {
     /// Push the data in an inode for updating the kernel cache.
     pub fn store<T>(&self, ino: u64, offset: u64, data: T) -> io::Result<()>
     where
-        T: Bytes,
+        T: AtomicBytes,
     {
         let size = u32::try_from(data.size()).expect("provided data is too large");
 
@@ -858,15 +885,15 @@ impl Notifier {
 
         struct Store<T>
         where
-            T: Bytes,
+            T: AtomicBytes,
         {
             header: fuse_out_header,
             arg: fuse_notify_store_out,
             data: T,
         }
-        impl<T> Bytes for Store<T>
+        impl<T> AtomicBytes for Store<T>
         where
-            T: Bytes,
+            T: AtomicBytes,
         {
             fn size(&self) -> usize {
                 self.header.len as usize
@@ -918,7 +945,7 @@ impl Notifier {
             header: fuse_out_header,
             arg: fuse_notify_retrieve_out,
         }
-        impl Bytes for Retrieve {
+        impl AtomicBytes for Retrieve {
             fn size(&self) -> usize {
                 self.header.len as usize
             }
@@ -957,7 +984,7 @@ impl Notifier {
             header: fuse_out_header,
             arg: fuse_notify_poll_wakeup_out,
         }
-        impl Bytes for PollWakeup {
+        impl AtomicBytes for PollWakeup {
             fn size(&self) -> usize {
                 self.header.len as usize
             }
@@ -982,7 +1009,7 @@ struct Reply<T> {
 }
 impl<T> Reply<T>
 where
-    T: Bytes,
+    T: AtomicBytes,
 {
     #[inline]
     fn new(unique: u64, error: i32, arg: T) -> Self {
@@ -999,9 +1026,9 @@ where
         }
     }
 }
-impl<T> Bytes for Reply<T>
+impl<T> AtomicBytes for Reply<T>
 where
-    T: Bytes,
+    T: AtomicBytes,
 {
     #[inline]
     fn size(&self) -> usize {
@@ -1023,7 +1050,7 @@ where
 fn write_bytes<W, T>(mut writer: W, bytes: T) -> io::Result<()>
 where
     W: io::Write,
-    T: Bytes,
+    T: AtomicBytes,
 {
     let size = bytes.size();
     let count = bytes.count();
