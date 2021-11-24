@@ -25,7 +25,7 @@ pub trait AtomicBytes {
     /// needs to add all chunks in `dst`.
     ///
     /// [bytes_vectored]: https://docs.rs/bytes/0.6/bytes/trait.Buf.html#method.bytes_vectored
-    fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>);
+    fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F);
 }
 
 /// The container of scattered bytes.
@@ -53,7 +53,7 @@ macro_rules! impl_for_pointers {
             }
 
             #[inline]
-            fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+            fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F) {
                 (**self).fill_bytes(dst)
             }
         }
@@ -80,7 +80,7 @@ impl AtomicBytes for () {
     }
 
     #[inline]
-    fn fill_bytes<'a>(&'a self, _: &mut dyn FillBytes<'a>) {}
+    fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, _: &mut F) {}
 }
 
 impl AtomicBytes for [u8; 0] {
@@ -95,7 +95,7 @@ impl AtomicBytes for [u8; 0] {
     }
 
     #[inline]
-    fn fill_bytes<'a>(&'a self, _: &mut dyn FillBytes<'a>) {}
+    fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, _: &mut F) {}
 }
 
 // ==== compound types ====
@@ -128,7 +128,7 @@ macro_rules! impl_for_tuple {
             }
 
             #[inline]
-            fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+            fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F) {
                 let ($($T,)+) = self;
                 $(
                     AtomicBytes::fill_bytes($T, dst);
@@ -159,7 +159,7 @@ where
     }
 
     #[inline]
-    fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+    fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F) {
         for t in self {
             AtomicBytes::fill_bytes(t, dst);
         }
@@ -181,7 +181,7 @@ where
     }
 
     #[inline]
-    fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+    fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F) {
         for t in self {
             AtomicBytes::fill_bytes(t, dst);
         }
@@ -205,7 +205,7 @@ where
     }
 
     #[inline]
-    fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+    fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F) {
         if let Some(t) = self {
             AtomicBytes::fill_bytes(t, dst)
         }
@@ -236,7 +236,7 @@ where
     }
 
     #[inline]
-    fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+    fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F) {
         match self {
             Either::Left(l) => AtomicBytes::fill_bytes(l, dst),
             Either::Right(r) => AtomicBytes::fill_bytes(r, dst),
@@ -272,7 +272,7 @@ mod impl_scattered_bytes_for_cont {
                 }
 
                 #[inline]
-                fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+                fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F) {
                     let this = as_bytes(self);
                     if !this.is_empty() {
                         dst.put(this);
@@ -303,7 +303,7 @@ impl AtomicBytes for std::ffi::OsStr {
     }
 
     #[inline]
-    fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+    fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F) {
         AtomicBytes::fill_bytes(self.as_bytes(), dst)
     }
 }
@@ -320,7 +320,7 @@ impl AtomicBytes for std::ffi::OsString {
     }
 
     #[inline]
-    fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+    fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F) {
         AtomicBytes::fill_bytes(self.as_bytes(), dst)
     }
 }

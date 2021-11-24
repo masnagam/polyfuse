@@ -115,7 +115,7 @@ impl AtomicBytes for EntryOut {
     }
 
     #[inline]
-    fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+    fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F) {
         dst.put(self.out.as_bytes());
     }
 }
@@ -207,7 +207,7 @@ impl AtomicBytes for AttrOut {
     }
 
     #[inline]
-    fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+    fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F) {
         dst.put(self.out.as_bytes());
     }
 }
@@ -236,7 +236,7 @@ impl AtomicBytes for OpenOut {
     }
 
     #[inline]
-    fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+    fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F) {
         dst.put(self.out.as_bytes());
     }
 }
@@ -304,7 +304,7 @@ impl AtomicBytes for WriteOut {
     }
 
     #[inline]
-    fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+    fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F) {
         dst.put(self.out.as_bytes());
     }
 }
@@ -339,7 +339,7 @@ impl AtomicBytes for StatfsOut {
     }
 
     #[inline]
-    fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+    fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F) {
         dst.put(self.out.as_bytes());
     }
 }
@@ -427,7 +427,7 @@ impl AtomicBytes for XattrOut {
     }
 
     #[inline]
-    fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+    fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F) {
         dst.put(self.out.as_bytes());
     }
 }
@@ -462,7 +462,7 @@ impl AtomicBytes for LkOut {
     }
 
     #[inline]
-    fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+    fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F) {
         dst.put(self.out.as_bytes());
     }
 }
@@ -529,7 +529,7 @@ impl AtomicBytes for BmapOut {
     }
 
     #[inline]
-    fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+    fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F) {
         dst.put(self.out.as_bytes());
     }
 }
@@ -564,7 +564,7 @@ impl AtomicBytes for PollOut {
     }
 
     #[inline]
-    fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+    fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F) {
         dst.put(self.out.as_bytes());
     }
 }
@@ -597,7 +597,7 @@ impl AtomicBytes for ReaddirOut {
         self.buf.count()
     }
 
-    fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+    fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F) {
         self.buf.fill_bytes(dst)
     }
 }

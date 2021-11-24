@@ -716,7 +716,7 @@ impl Notifier {
                 2
             }
 
-            fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+            fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F) {
                 dst.put(self.header.as_bytes());
                 dst.put(self.arg.as_bytes());
             }
@@ -775,7 +775,7 @@ impl Notifier {
                 4
             }
 
-            fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+            fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F) {
                 dst.put(self.header.as_bytes());
                 dst.put(self.arg.as_bytes());
                 dst.put(self.name.as_ref().as_bytes());
@@ -842,7 +842,7 @@ impl Notifier {
                 4
             }
 
-            fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+            fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F) {
                 dst.put(self.header.as_bytes());
                 dst.put(self.arg.as_bytes());
                 dst.put(self.name.as_ref().as_bytes());
@@ -903,7 +903,7 @@ impl Notifier {
                 2 + self.data.count()
             }
 
-            fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+            fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F) {
                 dst.put(self.header.as_bytes());
                 dst.put(self.arg.as_bytes());
                 self.data.fill_bytes(dst);
@@ -954,7 +954,7 @@ impl Notifier {
                 2
             }
 
-            fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+            fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F) {
                 dst.put(self.header.as_bytes());
                 dst.put(self.arg.as_bytes());
             }
@@ -993,7 +993,7 @@ impl Notifier {
                 2
             }
 
-            fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+            fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F) {
                 dst.put(self.header.as_bytes());
                 dst.put(self.arg.as_bytes());
             }
@@ -1040,7 +1040,7 @@ where
         self.arg.count() + 1
     }
 
-    fn fill_bytes<'a>(&'a self, dst: &mut dyn FillBytes<'a>) {
+    fn fill_bytes<'a, F: FillBytes<'a>>(&'a self, dst: &mut F) {
         dst.put(self.header.as_bytes());
         self.arg.fill_bytes(dst);
     }
