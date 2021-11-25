@@ -4,6 +4,7 @@ use crate::{
     decoder::Decoder,
     op::{DecodeError, Operation},
 };
+use bytes::{Bytes, BytesMut};
 use polyfuse_kernel::*;
 use std::{
     cmp,
@@ -371,7 +372,7 @@ impl Session {
         // FIXME: Align the allocated region in `arg` with the FUSE argument types.
         let mut header = fuse_in_header::default();
         let cap = self.inner.bufsize - mem::size_of::<fuse_in_header>();
-        let mut arg = Vec::with_capacity(cap);
+        let mut arg = BytesMut::with_capacity(cap);
         unsafe {
             arg.set_len(cap);
         }
@@ -388,10 +389,7 @@ impl Session {
                             "dequeued request message is too short",
                         ));
                     }
-                    unsafe {
-                        arg.set_len(len - mem::size_of::<fuse_in_header>());
-                    }
-
+                    arg.truncate(len - mem::size_of::<fuse_in_header>());
                     break;
                 }
 
@@ -412,7 +410,7 @@ impl Session {
         Ok(Some(Request {
             session: self.inner.clone(),
             header,
-            arg,
+            arg: arg.freeze(),
         }))
     }
 
@@ -557,10 +555,11 @@ where
 // ==== Request ====
 
 /// Context about an incoming FUSE request.
+#[derive(Clone)]
 pub struct Request {
     session: Arc<SessionInner>,
     header: fuse_in_header,
-    arg: Vec<u8>,
+    arg: Bytes,
 }
 
 impl Request {
@@ -612,10 +611,6 @@ impl Request {
     pub fn reply_error(&self, code: i32) -> io::Result<()> {
         write_bytes(&self.session.conn, Reply::new(self.unique(), code, ()))
     }
-
-    pub fn pending_reply(&self) -> PendingReply {
-        PendingReply::new(self.session.clone(), self.unique())
-    }
 }
 
 /// The remaining part of request message.
@@ -650,29 +645,6 @@ impl<'op> BufRead for Data<'op> {
     #[inline]
     fn consume(&mut self, amt: usize) {
         io::BufRead::consume(&mut self.data, amt)
-    }
-}
-
-pub struct PendingReply {
-    session: Arc<SessionInner>,
-    unique: u64,
-}
-
-impl PendingReply {
-    #[inline]
-    fn new(session: Arc<SessionInner>, unique: u64) -> Self {
-        Self { session, unique }
-    }
-
-    pub fn reply<T>(self, arg: T) -> io::Result<()>
-    where
-        T: AtomicBytes,
-    {
-        write_bytes(&self.session.conn, Reply::new(self.unique, 0, arg))
-    }
-
-    pub fn reply_error(&self, code: i32) -> io::Result<()> {
-        write_bytes(&self.session.conn, Reply::new(self.unique, code, ()))
     }
 }
 
