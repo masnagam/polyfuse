@@ -13,8 +13,8 @@ use slab::Slab;
 use std::{
     collections::hash_map::{Entry, HashMap, RandomState},
     ffi::{OsStr, OsString},
-    io::{self, BufRead},
-    mem,
+    io, mem,
+    ops::Deref,
     path::PathBuf,
     sync::{
         atomic::{AtomicU64, AtomicUsize, Ordering},
@@ -812,9 +812,9 @@ impl MemFS {
         req.reply(content)
     }
 
-    fn do_write<T>(&self, req: &Request, op: op::Write<'_>, mut data: T) -> io::Result<()>
+    fn do_write<T>(&self, req: &Request, op: op::Write<'_>, data: T) -> io::Result<()>
     where
-        T: BufRead + Unpin,
+        T: Deref<Target = [u8]>,
     {
         let mut inode = match self.inodes.get_mut(op.ino()) {
             Some(inode) => inode,
@@ -827,11 +827,11 @@ impl MemFS {
         };
 
         let offset = op.offset() as usize;
-        let size = op.size() as usize;
+        let size = std::cmp::min(data.len(), op.size() as usize);
 
         content.resize(std::cmp::max(content.len(), offset + size), 0);
 
-        data.read_exact(&mut content[offset..offset + size])?;
+        content[offset..offset + size].copy_from_slice(&data);
 
         inode.attr.st_size = (offset + size) as libc::off_t;
 

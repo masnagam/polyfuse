@@ -13,11 +13,11 @@ use polyfuse::{
 };
 
 use anyhow::{anyhow, ensure, Context as _, Result};
+use bytes::Bytes;
 use chrono::Local;
 use std::{
     collections::HashMap,
-    io::{self, prelude::*},
-    mem,
+    io, mem,
     path::PathBuf,
     sync::{mpsc, Arc, Mutex},
     time::Duration,
@@ -118,11 +118,11 @@ fn main() -> Result<()> {
                     }
                     _ => req.reply_error(libc::ENOENT)?,
                 },
-                Operation::NotifyReply(op, mut data) => {
+                Operation::NotifyReply(op, data) => {
                     let mut retrieves = heartbeat.retrieves.lock().unwrap();
                     if let Some(tx) = retrieves.remove(&op.unique()) {
-                        let mut buf = vec![0u8; op.size() as usize];
-                        data.read_exact(&mut buf)?;
+                        let size = std::cmp::min(data.len(), op.size() as usize);
+                        let buf = data.slice(..size);
                         tx.send(buf).unwrap();
                     }
                 }
@@ -145,7 +145,7 @@ enum NotifyKind {
 
 struct Heartbeat {
     inner: Mutex<Inner>,
-    retrieves: Mutex<HashMap<u64, mpsc::Sender<Vec<u8>>>>,
+    retrieves: Mutex<HashMap<u64, mpsc::Sender<Bytes>>>,
 }
 
 struct Inner {

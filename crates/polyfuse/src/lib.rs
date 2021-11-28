@@ -13,5 +13,5 @@ pub mod reply;
 
 pub use crate::{
     op::Operation,
-    session::{Data, KernelConfig, Notifier, Request, Session},
+    session::{KernelConfig, Notifier, Request, Session},
 };

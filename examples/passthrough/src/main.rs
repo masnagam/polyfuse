@@ -20,7 +20,8 @@ use std::{
     ffi::{OsStr, OsString},
     fmt::Debug,
     fs::{File, OpenOptions},
-    io::{self, prelude::*, BufRead},
+    io::{self, prelude::*},
+    ops::Deref,
     os::unix::prelude::*,
     path::PathBuf,
     sync::{Arc, Mutex},
@@ -583,32 +584,19 @@ impl Passthrough {
         Ok(buf)
     }
 
-    fn do_write<T>(&self, op: &op::Write<'_>, mut data: T) -> io::Result<WriteOut>
+    fn do_write<T>(&self, op: &op::Write<'_>, data: T) -> io::Result<WriteOut>
     where
-        T: BufRead + Unpin,
+        T: Deref<Target = [u8]>,
     {
         let file = self.opened_files.get(op.fh()).ok_or_else(no_entry)?;
         let mut file = file.lock().unwrap();
         let file = &mut *file;
 
+        let nwritten = std::cmp::min(data.len(), op.size() as usize);
         file.seek(io::SeekFrom::Start(op.offset()))?;
-
-        // At here, the data is transferred via the temporary buffer due to
-        // the incompatibility between the I/O abstraction in `futures` and
-        // `tokio`.
-        //
-        // In order to efficiently transfer the large files, both of zero
-        // copying support in `polyfuse` and resolution of impedance mismatch
-        // between `futures::io` and `tokio::io` are required.
-        let mut buf = Vec::with_capacity(op.size() as usize);
-        data.read_to_end(&mut buf)?;
-
-        let mut buf = &buf[..];
-        let mut buf = (&mut buf).take(op.size() as u64);
-        let written = std::io::copy(&mut buf, &mut *file)?;
-
+        file.write_all(&data[..nwritten])?;
         let mut out = WriteOut::default();
-        out.size(written as u32);
+        out.size(nwritten as u32);
 
         Ok(out)
     }

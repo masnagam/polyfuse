@@ -8,6 +8,7 @@ edition = "2018"
 polyfuse = { path = "../../crates/polyfuse" }
 
 anyhow = "1"
+bytes = "1.1.0"
 chrono = "0.4"
 libc = "0.2"
 pico-args = "0.3"

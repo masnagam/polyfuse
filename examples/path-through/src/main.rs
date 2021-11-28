@@ -23,7 +23,8 @@ use std::{
     collections::hash_map::{Entry, HashMap},
     ffi::OsString,
     fs::{self, File, Metadata, OpenOptions, ReadDir},
-    io::{self, prelude::*, BufRead},
+    io::{self, prelude::*},
+    ops::Deref,
     os::unix::prelude::*,
     path::{Path, PathBuf},
     time::Duration,
@@ -382,13 +383,14 @@ impl PathThrough {
 
     fn do_write<T>(&mut self, op: &op::Write<'_>, data: T) -> io::Result<WriteOut>
     where
-        T: BufRead + Unpin,
+        T: Deref<Target = [u8]>,
     {
         let file = Slab::get_mut(&mut self.files, op.fh() as usize).ok_or_else(invalid_handle)?;
-        let written = file.write(data.take(op.size() as u64), op.offset())?;
+        let nwritten = std::cmp::min(data.len(), op.size() as usize);
+        file.write_all(&data[..nwritten], op.offset())?;
 
         let mut out = WriteOut::default();
-        out.size(written as u32);
+        out.size(nwritten as u32);
         Ok(out)
     }
 
@@ -440,23 +442,13 @@ impl FileHandle {
         Ok(buf)
     }
 
-    fn write<T>(&mut self, mut data: T, offset: u64) -> io::Result<usize>
+    fn write_all<T>(&mut self, data: T, offset: u64) -> io::Result<()>
     where
-        T: BufRead + Unpin,
+        T: Deref<Target = [u8]>,
     {
         self.file.seek(io::SeekFrom::Start(offset))?;
-
-        let mut written = 0;
-        loop {
-            let chunk = data.fill_buf()?;
-            if chunk.is_empty() {
-                break;
-            }
-            let n = self.file.write(chunk)?;
-            written += n;
-        }
-
-        Ok(written)
+        self.file.write_all(&data)?;
+        Ok(())
     }
 
     fn fsync(&mut self, datasync: bool) -> io::Result<()> {

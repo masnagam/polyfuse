@@ -11,7 +11,7 @@ use std::{
     convert::{TryFrom, TryInto as _},
     ffi::OsStr,
     fmt,
-    io::{self, prelude::*, IoSlice, IoSliceMut},
+    io::{self, prelude::*, IoSlice},
     mem::{self, MaybeUninit},
     os::unix::prelude::*,
     path::{Path, PathBuf},
@@ -588,17 +588,21 @@ impl Request {
     }
 
     /// Decode the argument of this request.
-    pub fn operation(&self) -> Result<Operation<'_, Data<'_>>, DecodeError> {
+    pub fn operation(&self) -> Result<Operation<'_, Bytes>, DecodeError> {
         if self.session.exited() {
             return Ok(Operation::unknown());
         }
 
         let (arg, data) = match self.header.opcode {
-            FUSE_WRITE | FUSE_NOTIFY_REPLY => self.arg.split_at(mem::size_of::<fuse_write_in>()),
-            _ => (&self.arg[..], &[] as &[_]),
+            FUSE_WRITE | FUSE_NOTIFY_REPLY => {
+                let (arg, data) = self.arg.split_at(mem::size_of::<fuse_write_in>());
+                let data = self.arg.slice_ref(data);
+                (arg, data)
+            }
+            _ => (&self.arg[..], Bytes::new()),
         };
 
-        Operation::decode(&self.header, arg, Data { data })
+        Operation::decode(&self.header, arg, data)
     }
 
     pub fn reply<T>(&self, arg: T) -> io::Result<()>
@@ -610,41 +614,6 @@ impl Request {
 
     pub fn reply_error(&self, code: i32) -> io::Result<()> {
         write_bytes(&self.session.conn, Reply::new(self.unique(), code, ()))
-    }
-}
-
-/// The remaining part of request message.
-pub struct Data<'op> {
-    data: &'op [u8],
-}
-
-impl fmt::Debug for Data<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Data").finish()
-    }
-}
-
-impl<'op> io::Read for Data<'op> {
-    #[inline]
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        io::Read::read(&mut self.data, buf)
-    }
-
-    #[inline]
-    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        io::Read::read_vectored(&mut self.data, bufs)
-    }
-}
-
-impl<'op> BufRead for Data<'op> {
-    #[inline]
-    fn fill_buf(&mut self) -> io::Result<&[u8]> {
-        io::BufRead::fill_buf(&mut self.data)
-    }
-
-    #[inline]
-    fn consume(&mut self, amt: usize) {
-        io::BufRead::consume(&mut self.data, amt)
     }
 }
 
